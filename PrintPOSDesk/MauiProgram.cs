@@ -15,9 +15,10 @@ namespace PrintPOSDesk
                 });
 
             builder.Services.AddMauiBlazorWebView();
+            builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("https://controwellserver-e7egh8gjhadfe0ay.brazilsouth-01.azurewebsites.net/") });
 
 #if DEBUG
-    		builder.Services.AddBlazorWebViewDeveloperTools();
+            builder.Services.AddBlazorWebViewDeveloperTools();
     		builder.Logging.AddDebug();
 #endif
 

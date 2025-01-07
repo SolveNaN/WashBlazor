@@ -1,0 +1,335 @@
+﻿@using PrintPOSDesk.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@implements IAsyncDisposable
+@using System.Drawing.Printing
+@using System.Drawing
+@using System.Drawing.Imaging
+@using ZXing
+@using ZXing.Common
+<div class="row gx-4 gy-6 pb-5">
+    <div class="col-xxl-6">
+        <div class="mb-3">
+            <h3>Vehiculos en Parqueadero</h3>
+            <p class="text-body-tertiary mb-0">@currentTime</p>
+        </div>
+        <div class="row g-6">
+            <div class="col-md-6 mb-2 mb-sm-0">
+                <div class="d-flex align-items-center">
+                    <span class="me-2 text-info" data-feather="users" style="min-height:24px; width:24px"></span>
+                    <h4 class="text-body-tertiary mb-0">Usuarios :<span class="text-body-emphasis"> @Unidades.Count()</span></h4><span class="badge badge-phoenix fs-10 badge-phoenix-success d-inline-flex align-items-center ms-2"><span class="badge-label d-inline-block lh-base">+24.5%</span><span class="ms-1 fa-solid fa-caret-up d-inline-block lh-1"></span></span>
+                </div>
+                <div class="pb-0 pt-4">
+                    <div class="echarts-new-users" style="min-height:110px;width:100%;"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="d-flex align-items-center">
+                    <span class="me-2 text-primary" data-feather="zap" style="height:24px; width:24px"></span>
+                    <h4 class="text-body-tertiary mb-0">Producido :<span class="text-body-emphasis"> @Unidades.Sum(x=>x.Total(DateTime.Now))</span></h4><span class="badge badge-phoenix fs-10 badge-phoenix-success d-inline-flex align-items-center ms-2"><span class="badge-label d-inline-block lh-base">+30.5%</span><span class="ms-1 fa-solid fa-caret-up d-inline-block lh-1"></span></span>
+                </div>
+                <div class="pb-0 pt-4">
+                    <div class="echarts-new-leads" style="min-height:110px;width:100%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-6">
+        <div class="row">
+            <div class="col-sm-7 col-md-8 col-xxl-8 mb-md-3 mb-lg-0">
+                <h3>Estadísticas Mes</h3>
+                <p class="text-body-tertiary">Payment received across all channels</p>
+                <div class="row g-0">
+                    <div class="col-6 col-xl-4">
+                        <div class="d-flex flex-column flex-center align-items-sm-start flex-md-row justify-content-md-between flex-xxl-column p-3 ps-sm-3 ps-md-4 p-md-3 h-100 border-1 border-bottom border-end border-translucent">
+                            <div class="d-flex align-items-center mb-1"><span class="fa-solid fa-square fs-11 me-2 text-primary" data-fa-transform="up-2"></span><span class="mb-0 fs-9 text-body">Vehiculos Parqueados</span></div>
+                            <h3 class="fw-semibold ms-xl-3 ms-xxl-0 pe-md-2 pe-xxl-0 mb-0 mb-sm-3">80</h3>
+                        </div>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                        <div class="d-flex flex-column flex-center align-items-sm-start flex-md-row justify-content-md-between flex-xxl-column p-3 ps-sm-3 ps-md-4 p-md-3 h-100 border-1 border-bottom border-end-md-0 border-end-xl border-translucent">
+                            <div class="d-flex align-items-center mb-1"><span class="fa-solid fa-square fs-11 me-2 text-success" data-fa-transform="up-2"></span><span class="mb-0 fs-9 text-body">Lavado</span></div>
+                            <h3 class="fw-semibold ms-xl-3 ms-xxl-0 pe-md-2 pe-xxl-0 mb-0 mb-sm-3">65</h3>
+                        </div>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                        <div class="d-flex flex-column flex-center align-items-sm-start flex-md-row justify-content-md-between flex-xxl-column p-3 ps-sm-3 ps-md-4 p-md-3 h-100 border-1 border-bottom border-end border-end-md border-end-xl-0 border-translucent">
+                            <div class="d-flex align-items-center mb-1"><span class="fa-solid fa-square fs-11 me-2 text-info" data-fa-transform="up-2"></span><span class="mb-0 fs-9 text-body">Total</span></div>
+                            <h3 class="fw-semibold ms-xl-3 ms-xxl-0 pe-md-2 pe-xxl-0 mb-0 mb-sm-3">40</h3>
+                        </div>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                        <div class="d-flex flex-column flex-center align-items-sm-start flex-md-row justify-content-md-between flex-xxl-column p-3 ps-sm-3 ps-md-4 p-md-3 h-100 border-1 border-end-xl border-bottom border-bottom-xl-0 border-translucent">
+                            <div class="d-flex align-items-center mb-1"><span class="fa-solid fa-square fs-11 me-2 text-info-light" data-fa-transform="up-2"></span><span class="mb-0 fs-9 text-body">Producido</span></div>
+                            <h3 class="fw-semibold ms-xl-3 ms-xxl-0 pe-md-2 pe-xxl-0 mb-0 mb-sm-3">220</h3>
+                        </div>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                        <div class="d-flex flex-column flex-center align-items-sm-start flex-md-row justify-content-md-between flex-xxl-column p-3 ps-sm-3 ps-md-4 p-md-3 h-100 border-1 border-end border-translucent">
+                            <div class="d-flex align-items-center mb-1"><span class="fa-solid fa-square fs-11 me-2 text-danger-lighter" data-fa-transform="up-2"></span><span class="mb-0 fs-9 text-body">Producido</span></div>
+                            <h3 class="fw-semibold ms-xl-3 ms-xxl-0 pe-md-2 pe-xxl-0 mb-0 mb-sm-3">120</h3>
+                        </div>
+                    </div>
+                    <div class="col-6 col-xl-4">
+                        <div class="d-flex flex-column flex-center align-items-sm-start flex-md-row justify-content-md-between flex-xxl-column p-3 ps-sm-3 ps-md-4 p-md-3 h-100">
+                            <div class="d-flex align-items-center mb-1"><span class="fa-solid fa-square fs-11 me-2 text-warning-light" data-fa-transform="up-2"></span><span class="mb-0 fs-9 text-body">Total</span></div>
+                            <h3 class="fw-semibold ms-xl-3 ms-xxl-0 pe-md-2 pe-xxl-0 mb-0 mb-sm-3">35</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-5 col-md-4 col-xxl-4 my-3 my-sm-0">
+                <div class="position-relative d-flex flex-center mb-sm-4 mb-xl-0 echart-contact-by-source-container mt-sm-7 mt-lg-4 mt-xl-0">
+                    <div class="echart-contact-by-source" style="min-height:245px;width:100%"></div>
+                    <div class="position-absolute rounded-circle bg-primary-subtle top-50 start-50 translate-middle d-flex flex-center" style="height:100px; width:100px;">
+                        <h3 class="mb-0 text-primary-dark fw-bolder" data-label="data-label"></h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@code {
+    public HubConnection? hubConnection;
+    Unidad unidad = new Unidad();
+    bool verEspiner = false;
+    bool verEditar = false;
+    bool verEliminar = false;
+    bool verSalida = false;
+    Connection connection = new Connection();
+    protected override async Task OnInitializedAsync()
+    {
+        verEspiner = true;
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://testserver-hpa0fyd9ftbve0f6.canadacentral-01.azurewebsites.net/chathub")
+            .Build();
+
+        hubConnection.On<Unidad>("ReceiveUnidad", async (unidadcome) =>
+        {
+            string clave = "/" + DateTime.Now.ToString("yyyyMMmmss");
+            unidadcome.Url = unidadcome.Url + clave;
+            //var respuesta = await Http.PostAsJsonAsync($"{connection.Server}/api/Unidad/Crear", unidadcome);
+            textToPrint = unidad.Nombre;
+            unidad = unidadcome;
+            await PrintQRCode();
+            await ObtenerUnidades();
+            InvokeAsync(StateHasChanged);
+            var timer = new System.Threading.Timer(UpdateClock, null, 0, 1000);
+        });
+
+        await hubConnection.StartAsync();
+        await ObtenerUnidades();
+        verEspiner = false;
+    }
+    public async Task Send()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendUnidad", unidad);
+        }
+    }
+
+    public bool IsConnected =>
+        hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+    //Obtener Listado de la base de datos local
+    public static List<Unidad> Unidades = new List<Unidad>();
+    async Task ObtenerUnidades()
+    {
+        try
+        {
+
+            Unidades = await Http.GetFromJsonAsync<List<Unidad>>("http://localhost:5292/api/Unidad/Listado");
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+    }
+    //****/Asignar Unidad
+    async Task AsignarUnidad(Unidad obj)
+    {
+        unidad = obj;
+        await PrintQRCode();
+    }
+
+    async Task EditarUnidad(Unidad obj)
+    {
+        unidad = obj;
+        verEditar = true;
+        verEliminar = false;
+        verSalida = false;
+
+    }
+    async Task GuardarCambios()
+    {
+        var Respueseta = await Http.PutAsJsonAsync($"{connection.Server}/api/Unidad/Actualizar/{unidad.Id}", unidad);
+        await ObtenerUnidades();
+        verEditar = false;
+        verEliminar = false;
+        verSalida = false;
+    }
+    async Task EliminarUnidad(Unidad obj)
+    {
+        unidad = obj;
+        verEditar = false;
+        verEliminar = true;
+        verSalida = false;
+
+    }
+    async Task ConfirmarEliminarUnidad()
+    {
+        var respuesta = await Http.DeleteAsync($"{connection.Server}/api/Unidad/Eliminar/{unidad.Id}");
+        await ObtenerUnidades();
+        verEditar = false;
+        verEliminar = false;
+        verSalida = false;
+
+    }
+    async Task SalidaUnidad(Unidad obj)
+    {
+        unidad = obj;
+        verEditar = false;
+        verEliminar = false;
+        verSalida = true;
+
+    }
+    async Task ConfirmarSalidaUnidad()
+    {
+        unidad.EnParqueadero = false;
+        unidad.FechaFinal = DateTime.Now;
+        var Respueseta = await Http.PutAsJsonAsync($"{connection.Server}/api/Unidad/Actualizar/{unidad.Id}", unidad);
+        await PrintQRCode();
+        await ObtenerUnidades();
+        verEditar = false;
+        verEliminar = false;
+        verSalida = false;
+
+    }
+    async Task Actualizar()
+    {
+        await ObtenerUnidades();
+        currentTime = DateTime.Now;
+        var timer = new System.Threading.Timer(UpdateClock, null, 0, 1000);
+    }
+    //CODIGO DE IMPRESION ************************
+
+    private string textToPrint = "https://washclient-h6fvarejhddtgke5.canadacentral-01.azurewebsites.net/";
+    string Lavado = "";
+    string Parqueadero = "";
+    private async Task PrintQRCode()
+    {
+        if (string.IsNullOrWhiteSpace(textToPrint))
+        {
+            Console.WriteLine("El texto para el código QR no puede estar vacío.");
+            return;
+        }
+
+        string printerName = "POS-80C";
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                using (PrintDocument printDoc = new PrintDocument())
+                {
+                    printDoc.PrinterSettings.PrinterName = printerName;
+                    printDoc.PrintPage += (sender, e) => PrintQRCode(e, unidad.Url);
+                    printDoc.Print();
+                }
+            });
+
+            Console.WriteLine("Código QR impreso correctamente.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al imprimir el código QR: {ex.Message}");
+        }
+    }
+
+    private void PrintQRCode(PrintPageEventArgs e, string text)
+    {
+        // Carga y dibuja la imagen desde imagePath
+        string imagePath = @"C:\Users\Dagoberto\source\repos\WashBlazor\PrinterPOSClient\wwwroot\assets\images\parkcar.jpg";
+        if (System.IO.File.Exists(imagePath))
+        {
+            using (Image img = Image.FromFile(imagePath))
+            {
+                // Ajusta la posición y el tamaño de la imagen según tus necesidades
+                e.Graphics.DrawImage(img, new RectangleF(0, 0, 100, 100)); // Cambié la posición a (0, 0) para imprimir primero la imagen
+            }
+        }
+        else
+        {
+            Console.WriteLine($"No se encontró la imagen en la ruta: {imagePath}");
+        }
+
+        // Genera el código QR
+        var writer = new BarcodeWriterPixelData
+            {
+                Format = BarcodeFormat.QR_CODE,
+                Options = new EncodingOptions
+                {
+                    Height = 200,
+                    Width = 200
+                }
+            };
+
+        var pixelData = writer.Write(text);
+        using (var bitmap = new Bitmap(pixelData.Width, pixelData.Height, PixelFormat.Format32bppRgb))
+        {
+            var bitmapData = bitmap.LockBits(new Rectangle(0, 0, pixelData.Width, pixelData.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppRgb);
+            try
+            {
+                System.Runtime.InteropServices.Marshal.Copy(pixelData.Pixels, 0, bitmapData.Scan0, pixelData.Pixels.Length);
+            }
+            finally
+            {
+                bitmap.UnlockBits(bitmapData);
+            }
+            e.Graphics.DrawImage(bitmap, new PointF(0, 120)); // Cambié la posición a (0, 120) para que el QR esté debajo de la imagen
+        }
+
+        // Dibuja el texto con ajuste automático para el ancho de la hoja
+        using (Font font = new Font("Trebuchet MS", 12))
+        {
+            if (unidad.Lavado)
+            {
+                Lavado = "Servicio de Lavado";
+            }
+            if (unidad.Parqueadero)
+            {
+                Parqueadero = "Servicio de Parqueadero";
+            }
+            string formattedText = "______________________SMAR WASH CAR *** AUTO PARQUEADERO / LAVADO_________________" + unidad.FechaInicio.ToString() + " **** " + unidad.Nombre + " **** " + unidad.Cedula + " **** " + unidad.Vehiculo + " **** " + unidad.Placa + " **** " + unidad.Descripcion + " **** " + unidad.Recomendacion + " " + Parqueadero + " " + Lavado + " " + "____________________________________________________";
+            Console.WriteLine(formattedText);
+            // Define el área de dibujo para el texto, limitando el ancho a 200 píxeles
+            RectangleF textArea = new RectangleF(0, 330, 200, e.PageBounds.Height - 330);
+
+            // Usa StringFormat para ajustar el texto al ancho del área definida
+            StringFormat stringFormat = new StringFormat
+                {
+                    FormatFlags = StringFormatFlags.LineLimit // Ajusta el texto al área, con saltos de línea automáticos
+                };
+
+            e.Graphics.DrawString(formattedText, font, Brushes.Black, textArea, stringFormat);
+        }
+    }
+    //Timer reloj
+    private DateTime currentTime;
+    protected override void OnInitialized()
+    {
+        currentTime = DateTime.Now;
+        var timer = new System.Threading.Timer(UpdateClock, null, 0, 1000);
+    }
+    private void UpdateClock(object state) { InvokeAsync(() => { currentTime = DateTime.Now; StateHasChanged(); }); }
+}

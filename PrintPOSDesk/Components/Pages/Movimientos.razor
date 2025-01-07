@@ -1,0 +1,561 @@
+﻿@using PrintPOSDesk.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@implements IAsyncDisposable
+@using System.Drawing.Printing
+@using System.Drawing
+@using System.Drawing.Imaging
+@using ZXing
+@using ZXing.Common
+<h3>En Parqueadero </h3>
+<p>
+    @currentTime <span>
+        <button @onclick=Actualizar type="button" class="btn btn-success">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z" />
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466" />
+            </svg>
+            Refrescar</button>
+    </span>
+</p>
+@if (verEspiner)
+{
+    <Espiner />
+}
+<div id="tableExample2" data-list="{&quot;valueNames&quot;:[&quot;name&quot;,&quot;email&quot;,&quot;age&quot;],&quot;page&quot;:5,&quot;pagination&quot;:{&quot;innerWindow&quot;:2,&quot;left&quot;:1,&quot;right&quot;:1}}">
+    <div class="table-responsive">
+        <table class="table table-striped table-sm fs-9 mb-0">
+            <thead>
+                <tr>
+                    <th class="sort border-top" scope="col">#</th>
+                    <th class="sort border-top" scope="col">First</th>
+                    <th class="sort border-top" scope="col">Last</th>
+                    <th class="sort border-top" scope="col">Inicio</th>
+                    <th class="sort border-top" scope="col">Horas</th>
+                    <th class="sort border-top" scope="col">Minutos</th>
+                    <th class="sort border-top" scope="col">Valor</th>
+                    <th class="sort border-top" scope="col">Imprimir</th>
+                    <th class="sort border-top" scope="col">Editar</th>
+                    <th class="sort border-top" scope="col">Eliminar</th>
+                    <th class="sort text-end align-middle pe-0 border-top" scope="col">DAR SALIDA</th>
+                </tr>
+            </thead>
+            <tbody class="list">
+                @foreach (var i in Unidades)
+                {
+                    <tr>
+                        <th scope="row">@i.Id</th>
+                        <td>@i.Nombre</td>
+                        <td>@i.Placa</td>
+                        <td>@i.FechaInicio</td>
+                        <td>@i.ContidadHoras(currentTime)</td>
+                        <td>@i.ContidadMinutos(currentTime)</td>
+                        <td>@i.ValorHoras(currentTime)</td>
+                        <td>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="()=>AsignarUnidad(i)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer-fill" viewBox="0 0 16 16">
+                                    <path d="M5 1a2 2 0 0 0-2 2v1h10V3a2 2 0 0 0-2-2zm6 8H5a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1" />
+                                    <path d="M0 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1v-2a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v2H2a2 2 0 0 1-2-2zm2.5 1a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1" />
+                                </svg>
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#exampleModal" @onclick="()=>EditarUnidad(i)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pen" viewBox="0 0 16 16">
+                                    <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001m-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708z" />
+                                </svg>
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="()=>EliminarUnidad(i)" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                    <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5" />
+                                </svg>
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="()=>SalidaUnidad(i)" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-down-right" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M8.636 12.5a.5.5 0 0 1-.5.5H1.5A1.5 1.5 0 0 1 0 11.5v-10A1.5 1.5 0 0 1 1.5 0h10A1.5 1.5 0 0 1 13 1.5v6.636a.5.5 0 0 1-1 0V1.5a.5.5 0 0 0-.5-.5h-10a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h6.636a.5.5 0 0 1 .5.5" />
+                                    <path fill-rule="evenodd" d="M16 15.5a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1 0-1h3.793L6.146 6.854a.5.5 0 1 1 .708-.708L15 14.293V10.5a.5.5 0 0 1 1 0z" />
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                }
+
+
+
+            </tbody>
+        </table>
+    </div>
+    <div class="d-flex justify-content-center mt-3">
+        <button class="page-link disabled" data-list-pagination="prev" disabled=""><svg class="svg-inline--fa fa-chevron-left" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="chevron-left" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" data-fa-i2svg=""><path fill="currentColor" d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256 246.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z"></path></svg><!-- <span class="fas fa-chevron-left"></span> Font Awesome fontawesome.com --></button>
+        <ul class="mb-0 pagination"><li class="active"><button class="page" type="button" data-i="1" data-page="5">1</button></li><li><button class="page" type="button" data-i="2" data-page="5">2</button></li><li><button class="page" type="button" data-i="3" data-page="5">3</button></li><li class="disabled"><button class="page" type="button">...</button></li><li><button class="page" type="button" data-i="9" data-page="5">9</button></li></ul>
+        <button class="page-link pe-0" data-list-pagination="next"><svg class="svg-inline--fa fa-chevron-right" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="chevron-right" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" data-fa-i2svg=""><path fill="currentColor" d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"></path></svg><!-- <span class="fas fa-chevron-right"></span> Font Awesome fontawesome.com --></button>
+    </div>
+</div>
+
+
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            @if (verEditar)
+            {
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Editar</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Nombre </label>
+                            <input class="form-control" @bind-value=unidad.Nombre type="text" name="name" placeholder="Nombre" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Cedula </label>
+                            <input class="form-control" @bind-value=unidad.Cedula type="text" name="surname" placeholder="Cedula" autocomplete="on" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Vehiculo </label>
+                            <input class="form-control" @bind-value=unidad.Vehiculo type="text" name="name" id="name" placeholder="Vehiculo" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Placa </label>
+                            <input class="form-control" @bind-value=unidad.Placa type="text" name="surname" id="surname" placeholder="Placa" autocomplete="on" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Contacto </label>
+                        <input class="form-control" @bind-value=unidad.Contacto type="text" name="email" placeholder="Contacto (Telefono o correo)" required="">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Descripcion </label>
+                        <input class="form-control" @bind-value=unidad.Descripcion type="text" name="email" id="email" placeholder="Descripcion Vehiculo" required="">
+
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Servicio </label>
+                        <ul>
+                            <li> <input type="checkbox" @bind="unidad.Parqueadero" /> <span>Parqueadero</span> </li>
+                            <li> <input type="checkbox" @bind="unidad.Lavado" /> <span>Lavado</span> </li>
+                        </ul>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label" for="exampleTextarea">Recomendacion </label>
+                        <textarea type="text" @bind=unidad.Recomendacion class="form-control" id="message" placeholder="Recomendaciones" required=""></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Valor Hora Parkeadero </label>
+                            <input class="form-control" @bind-value=unidad.ValorHora type="text" name="name" placeholder="Valor Hora" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Valor Lavado </label>
+                            <input class="form-control" @bind-value=unidad.Cedula type="text" name="surname" placeholder="Valor Lavado" autocomplete="on" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" @onclick=GuardarCambios data-bs-dismiss="modal">Guardar Cambios</button>
+                </div>
+            }
+            @if (verEliminar)
+            {
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Eliminar</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Nombre </label>
+                            <input class="form-control" @bind-value=unidad.Nombre type="text" name="name" placeholder="Nombre" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Cedula </label>
+                            <input class="form-control" @bind-value=unidad.Cedula type="text" name="surname" placeholder="Cedula" autocomplete="on" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Vehiculo </label>
+                            <input class="form-control" @bind-value=unidad.Vehiculo type="text" name="name" id="name" placeholder="Vehiculo" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Placa </label>
+                            <input class="form-control" @bind-value=unidad.Placa type="text" name="surname" id="surname" placeholder="Placa" autocomplete="on" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Contacto </label>
+                        <input class="form-control" @bind-value=unidad.Contacto type="text" name="email" placeholder="Contacto (Telefono o correo)" required="">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Descripcion </label>
+                        <input class="form-control" @bind-value=unidad.Descripcion type="text" name="email" id="email" placeholder="Descripcion Vehiculo" required="">
+
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Servicio </label>
+                        <ul>
+                            <li> <input type="checkbox" @bind="unidad.Parqueadero" /> <span>Parqueadero</span> </li>
+                            <li> <input type="checkbox" @bind="unidad.Lavado" /> <span>Lavado</span> </li>
+                        </ul>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label" for="exampleTextarea">Recomendacion </label>
+                        <textarea type="text" @bind=unidad.Recomendacion class="form-control" id="message" placeholder="Recomendaciones" required=""></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Valor Hora Parkeadero </label>
+                            <input class="form-control" @bind-value=unidad.ValorHora type="text" name="name" placeholder="Valor Hora" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Valor Lavado </label>
+                            <input class="form-control" @bind-value=unidad.Cedula type="text" name="surname" placeholder="Valor Lavado" autocomplete="on" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-warning" @onclick=ConfirmarEliminarUnidad data-bs-dismiss="modal">Confirmar Eliminación</button>
+                </div>
+            }
+            @if (verSalida)
+            {
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="exampleModalLabel">Despachar Vehiculo</h1>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Nombre </label>
+                            <input class="form-control" @bind-value=unidad.Nombre type="text" name="name" placeholder="Nombre" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Cedula </label>
+                            <input class="form-control" @bind-value=unidad.Cedula type="text" name="surname" placeholder="Cedula" autocomplete="on" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Vehiculo </label>
+                            <input class="form-control" @bind-value=unidad.Vehiculo type="text" name="name" id="name" placeholder="Vehiculo" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Placa </label>
+                            <input class="form-control" @bind-value=unidad.Placa type="text" name="surname" id="surname" placeholder="Placa" autocomplete="on" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Contacto </label>
+                        <input class="form-control" @bind-value=unidad.Contacto type="text" name="email" placeholder="Contacto (Telefono o correo)" required="">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Descripcion </label>
+                        <input class="form-control" @bind-value=unidad.Descripcion type="text" name="email" id="email" placeholder="Descripcion Vehiculo" required="">
+
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="exampleFormControlInput">Servicio </label>
+                        <ul>
+                            <li> <input type="checkbox" @bind="unidad.Parqueadero" /> <span>Parqueadero</span> </li>
+                            <li> <input type="checkbox" @bind="unidad.Lavado" /> <span>Lavado</span> </li>
+                        </ul>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label" for="exampleTextarea">Recomendacion </label>
+                        <textarea type="text" @bind=unidad.Recomendacion class="form-control" id="message" placeholder="Recomendaciones" required=""></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Valor Hora Parkeadero </label>
+                            <input class="form-control" @bind-value=unidad.ValorHora type="text" name="name" placeholder="Valor Hora" autocomplete="on" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="exampleFormControlInput">Valor Lavado </label>
+                            <input class="form-control" @bind-value=unidad.Cedula type="text" name="surname" placeholder="Valor Lavado" autocomplete="on" required>
+                        </div>
+                    </div>
+                    <hr />
+                    @if (unidad.Parqueadero)
+                    {
+                        <p>Parqueadero cantidad horas <span>@unidad.ContidadHoras(DateTime.Now) : @unidad.ContidadMinutos(DateTime.Now) - VALOR:  @unidad.ValorHoras(DateTime.Now)</span></p>
+                    }
+                    @if (unidad.Lavado)
+                    {
+                        <p>Lavado valor: @unidad.ValorLavado</p>
+                    }
+                    <p>Total: @unidad.Total(DateTime.Now) $</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-success" @onclick=ConfirmarSalidaUnidad data-bs-dismiss="modal">Confirmar Salida e Imprimir</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+@code {
+    public HubConnection? hubConnection;
+    Unidad unidad = new Unidad();
+    bool verEspiner = false;
+    bool verEditar = false;
+    bool verEliminar = false;
+    bool verSalida = false;
+    Connection connection = new Connection();
+    protected override async Task OnInitializedAsync()
+    {
+        verEspiner = true;
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://testserver-hpa0fyd9ftbve0f6.canadacentral-01.azurewebsites.net/chathub")
+            .Build();
+
+        hubConnection.On<Unidad>("ReceiveUnidad", async (unidadcome) =>
+        {
+            string clave = "/" + DateTime.Now.ToString("yyyyMMmmss");
+            unidadcome.Url = unidadcome.Url + clave;
+           // var respuesta = await Http.PostAsJsonAsync($"{connection.Server}/api/Unidad/Crear", unidadcome);
+            textToPrint = unidad.Nombre;
+            unidad = unidadcome;
+            await PrintQRCode();
+            await ObtenerUnidades();
+            InvokeAsync(StateHasChanged);
+            var timer = new System.Threading.Timer(UpdateClock, null, 0, 1000);
+        });
+
+        await hubConnection.StartAsync();
+        await ObtenerUnidades();
+        verEspiner = false;
+    }
+    public async Task Send()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendUnidad", unidad);
+        }
+    }
+
+    public bool IsConnected =>
+        hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+    //Obtener Listado de la base de datos local
+    public static List<Unidad> Unidades = new List<Unidad>();
+    async Task ObtenerUnidades()
+    {
+        try
+        {
+
+            Unidades = await Http.GetFromJsonAsync<List<Unidad>>("http://localhost:5292/api/Unidad/Listado");
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+    }
+    //****/Asignar Unidad
+    async Task AsignarUnidad(Unidad obj)
+    {
+        unidad = obj;
+        await PrintQRCode();
+    }
+
+    async Task EditarUnidad(Unidad obj)
+    {
+        unidad = obj;
+        verEditar = true;
+        verEliminar = false;
+        verSalida = false;
+
+    }
+    async Task GuardarCambios()
+    {
+        var Respueseta = await Http.PutAsJsonAsync($"{connection.Server}/api/Unidad/Actualizar/{unidad.Id}", unidad);
+        await ObtenerUnidades();
+        verEditar = false;
+        verEliminar = false;
+        verSalida = false;
+    }
+    async Task EliminarUnidad(Unidad obj)
+    {
+        unidad = obj;
+        verEditar = false;
+        verEliminar = true;
+        verSalida = false;
+
+    }
+    async Task ConfirmarEliminarUnidad()
+    {
+        var respuesta = await Http.DeleteAsync($"{connection.Server}/api/Unidad/Eliminar/{unidad.Id}");
+        await ObtenerUnidades();
+        verEditar = false;
+        verEliminar = false;
+        verSalida = false;
+
+    }
+    async Task SalidaUnidad(Unidad obj)
+    {
+        unidad = obj;
+        verEditar = false;
+        verEliminar = false;
+        verSalida = true;
+
+    }
+    async Task ConfirmarSalidaUnidad()
+    {
+        unidad.EnParqueadero = false;
+        unidad.FechaFinal = DateTime.Now;
+        var Respueseta = await Http.PutAsJsonAsync($"{connection.Server}/api/Unidad/Actualizar/{unidad.Id}", unidad);
+        await PrintQRCode();
+        await ObtenerUnidades();
+        verEditar = false;
+        verEliminar = false;
+        verSalida = false;
+
+    }
+    async Task Actualizar()
+    {
+        await ObtenerUnidades();
+        currentTime = DateTime.Now;
+        var timer = new System.Threading.Timer(UpdateClock, null, 0, 1000);
+    }
+    //CODIGO DE IMPRESION ************************
+
+    private string textToPrint = "https://washclient-h6fvarejhddtgke5.canadacentral-01.azurewebsites.net/";
+    string Lavado = "";
+    string Parqueadero = "";
+    private async Task PrintQRCode()
+    {
+        if (string.IsNullOrWhiteSpace(textToPrint))
+        {
+            Console.WriteLine("El texto para el código QR no puede estar vacío.");
+            return;
+        }
+
+        string printerName = "POS-80C";
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                using (PrintDocument printDoc = new PrintDocument())
+                {
+                    printDoc.PrinterSettings.PrinterName = printerName;
+                    printDoc.PrintPage += (sender, e) => PrintQRCode(e, unidad.Url);
+                    printDoc.Print();
+                }
+            });
+
+            Console.WriteLine("Código QR impreso correctamente.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al imprimir el código QR: {ex.Message}");
+        }
+    }
+
+    private void PrintQRCode(PrintPageEventArgs e, string text)
+    {
+        // Carga y dibuja la imagen desde imagePath
+        string imagePath = @"C:\Users\Dagoberto\source\repos\WashBlazor\PrinterPOSClient\wwwroot\assets\images\parkcar.jpg";
+        if (System.IO.File.Exists(imagePath))
+        {
+            using (Image img = Image.FromFile(imagePath))
+            {
+                // Ajusta la posición y el tamaño de la imagen según tus necesidades
+                e.Graphics.DrawImage(img, new RectangleF(0, 0, 100, 100)); // Cambié la posición a (0, 0) para imprimir primero la imagen
+            }
+        }
+        else
+        {
+            Console.WriteLine($"No se encontró la imagen en la ruta: {imagePath}");
+        }
+
+        // Genera el código QR
+        var writer = new BarcodeWriterPixelData
+            {
+                Format = BarcodeFormat.QR_CODE,
+                Options = new EncodingOptions
+                {
+                    Height = 200,
+                    Width = 200
+                }
+            };
+
+        var pixelData = writer.Write(text);
+        using (var bitmap = new Bitmap(pixelData.Width, pixelData.Height, PixelFormat.Format32bppRgb))
+        {
+            var bitmapData = bitmap.LockBits(new Rectangle(0, 0, pixelData.Width, pixelData.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppRgb);
+            try
+            {
+                System.Runtime.InteropServices.Marshal.Copy(pixelData.Pixels, 0, bitmapData.Scan0, pixelData.Pixels.Length);
+            }
+            finally
+            {
+                bitmap.UnlockBits(bitmapData);
+            }
+            e.Graphics.DrawImage(bitmap, new PointF(0, 120)); // Cambié la posición a (0, 120) para que el QR esté debajo de la imagen
+        }
+
+        // Dibuja el texto con ajuste automático para el ancho de la hoja
+        using (Font font = new Font("Trebuchet MS", 12))
+        {
+            if (unidad.Lavado)
+            {
+                Lavado = "Servicio de Lavado";
+            }
+            if (unidad.Parqueadero)
+            {
+                Parqueadero = "Servicio de Parqueadero";
+            }
+            string formattedText = "WASH BLAZOR " + "\n" + "N° P20" + unidad.Id + "\n" + "\n" + "Fecha Legada: " + unidad.FechaInicio.ToString() + "\n" + "\n" + "Nombre: " + unidad.Nombre + " \n " + "\n" + "Identificación: " + unidad.Cedula + " \n " + "\n" + "Vehiculo: "
+            + unidad.Vehiculo + " \n " + "\n" + "Placa: " + unidad.Placa + " \n " + "\n" + "Descripción: " + unidad.Descripcion + " \n " + "\n" + "Recomendación: " + unidad.Recomendacion + "\n " + "\n" + "SERVICIOS" + "\n" + "\n" + Parqueadero + " Valor Hora: " + unidad.ValorHora + "\n " + "\n" + Lavado + " Valor:  " + unidad.ValorLavado + "\n" + "\n" + "\n" + "----------" + "\n"
+            + "TERMINOS Y CONDICIONES" + "\n" + "\n"
+            + "1 →El vehiculo se entregará a la presentación de este tiquete, en caso de perdida deberá avisar inmediatamente y presentar los documentos que acreditan la propiedad de la misa" + "\n" + "\n"
+            + "2 →El parqueadero no se hace responsable por daños ocasionados por incendios, rayos, temblores de tierra, o casos fortuitos" + "\n" + "\n"
+            + "3 →El parqueadero no dará custodia a dinero, joyas o armas ni responderá por herramientas u objetos dejados dentro del vehiculo que no sean entregados al aparcador" + "\n" + "\n"
+           + "4 →El parqueadero no se hace responsable por daños mecanicos, electricos y latas averiadas por fallas ocasionadas por el mal estado del vehiculo" + "\n" + "\n" + "\n" 
+            ;
+            Console.WriteLine(formattedText);
+            // Define el área de dibujo para el texto, limitando el ancho a 200 píxeles
+            RectangleF textArea = new RectangleF(0, 330, 200, e.PageBounds.Height - 330);
+
+            // Usa StringFormat para ajustar el texto al ancho del área definida
+            StringFormat stringFormat = new StringFormat
+                {
+                    FormatFlags = StringFormatFlags.LineLimit // Ajusta el texto al área, con saltos de línea automáticos
+                };
+
+            e.Graphics.DrawString(formattedText, font, Brushes.Black, textArea, stringFormat);
+        }
+    }
+    //Timer reloj
+    private DateTime currentTime;
+    protected override void OnInitialized()
+    {
+        currentTime = DateTime.Now;
+        var timer = new System.Threading.Timer(UpdateClock, null, 0, 1000);
+    }
+    private void UpdateClock(object state) { InvokeAsync(() => { currentTime = DateTime.Now; StateHasChanged(); }); }
+}

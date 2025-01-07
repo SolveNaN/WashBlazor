@@ -1,0 +1,246 @@
+﻿@using PrintPOSDesk.Models
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@implements IAsyncDisposable
+@using System.Drawing.Printing
+@using System.Drawing
+@using System.Drawing.Imaging
+@using ZXing
+@using ZXing.Common
+<div class="row">
+    <div class="col-6">
+        <label class="form-label" for="exampleFormControlInput">Nombre </label>
+        <input class="form-control" @bind-value=unidad.Nombre type="text" name="name" placeholder="Nombre" autocomplete="on" required>
+    </div>
+    <div class="col-6">
+        <label class="form-label" for="exampleFormControlInput">Cedula </label>
+        <input class="form-control" @bind-value=unidad.Cedula type="text" name="surname" placeholder="Cedula" autocomplete="on" required>
+    </div>
+</div>
+<div class="row">
+    <div class="col-6">
+        <label class="form-label" for="exampleFormControlInput">Vehiculo </label>
+        <input class="form-control" @bind-value=unidad.Vehiculo type="text" name="name" id="name" placeholder="Vehiculo" autocomplete="on" required>
+    </div>
+    <div class="col-6">
+        <label class="form-label" for="exampleFormControlInput">Placa </label>
+        <input class="form-control" @bind-value=unidad.Placa type="text" name="surname" id="surname" placeholder="Placa" autocomplete="on" required>
+    </div>
+</div>
+<div class="mb-3">
+    <label class="form-label" for="exampleFormControlInput">Contacto </label>
+    <input class="form-control" @bind-value=unidad.Contacto type="text" name="email" placeholder="Contacto (Telefono o correo)" required="">
+</div>
+
+<div class="mb-3">
+    <label class="form-label" for="exampleFormControlInput">Descripcion </label>
+    <input class="form-control" @bind-value=unidad.Descripcion type="text" name="email" id="email" placeholder="Descripcion Vehiculo" required="">
+
+</div>
+<div class="mb-3">
+    <label class="form-label" for="exampleFormControlInput">Servicio </label>
+    <ul>
+        <li> <input type="checkbox" @bind="unidad.Parqueadero" /> <span>Parqueadero</span> </li>
+        <li> <input type="checkbox" @bind="unidad.Lavado" /> <span>Lavado</span> </li>
+    </ul>
+</div>
+<div class="mb-0">
+    <label class="form-label" for="exampleTextarea">Recomendacion </label>
+    <textarea type="text" @bind=unidad.Recomendacion class="form-control" id="message" placeholder="Recomendaciones" required=""></textarea>
+</div>
+<div class="row">
+    <div class="col-6">
+        <label class="form-label" for="exampleFormControlInput">Valor Hora Parkeadero </label>
+        <input class="form-control" @bind-value=unidad.ValorHora type="text" name="name" placeholder="Valor Hora" autocomplete="on" required>
+    </div>
+    <div class="col-6">
+        <label class="form-label" for="exampleFormControlInput">Valor Lavado </label>
+        <input class="form-control" @bind-value=unidad.ValorLavado type="text" name="surname" placeholder="Valor Lavado" autocomplete="on" required>
+    </div>
+</div>
+<br />
+
+<button class="btn btn-primary" @onclick="()=>Send()">Ingresar</button>
+<br />
+@code {
+    public HubConnection? hubConnection;
+    Unidad unidad = new Unidad();
+
+    Connection connection = new Connection();
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl("https://testserver-hpa0fyd9ftbve0f6.canadacentral-01.azurewebsites.net/chathub")
+            .Build();
+
+        hubConnection.On<Unidad>("ReceiveUnidad", async (unidadcome) =>
+        {
+            string clave = "/" + DateTime.Now.ToString("yyyyMMmmss");
+            unidadcome.Url = unidadcome.Url + clave;
+            var respuesta = await Http.PostAsJsonAsync($"{connection.Server}/api/Unidad/Crear", unidadcome);
+            textToPrint = unidad.Nombre;
+            unidad = unidadcome;
+            await PrintQRCode();
+            await ObtenerUnidades();
+            InvokeAsync(StateHasChanged);
+            var timer = new System.Threading.Timer(UpdateClock, null, 0, 1000);
+            var uniadenblanco = new Unidad();
+            unidad = uniadenblanco;
+        });
+
+        await hubConnection.StartAsync();
+        await ObtenerUnidades();
+    }
+    public async Task Send()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("SendUnidad", unidad);
+        }
+    }
+
+    public bool IsConnected =>
+        hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+    //Obtener Listado de la base de datos local
+    public static List<Unidad> Unidades = new List<Unidad>();
+    async Task ObtenerUnidades()
+    {
+        try
+        {
+           Unidades = await Http.GetFromJsonAsync<List<Unidad>>("http://localhost:5292/api/Unidad/Listado");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
+    }
+    //****/Asignar Unidad
+    async Task AsignarUnidad(Unidad obj)
+    {
+        unidad = obj;
+        await PrintQRCode();
+    }
+    //CODIGO DE IMPRESION ************************
+
+    private string textToPrint = "https://washclient-h6fvarejhddtgke5.canadacentral-01.azurewebsites.net/";
+    string Lavado = "";
+    string Parqueadero = "";
+    private async Task PrintQRCode()
+    {
+        if (string.IsNullOrWhiteSpace(textToPrint))
+        {
+            Console.WriteLine("El texto para el código QR no puede estar vacío.");
+            return;
+        }
+
+        string printerName = "POS-80C";
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                using (PrintDocument printDoc = new PrintDocument())
+                {
+                    printDoc.PrinterSettings.PrinterName = printerName;
+                    printDoc.PrintPage += (sender, e) => PrintQRCode(e, unidad.Url);
+                    printDoc.Print();
+                }
+            });
+
+            Console.WriteLine("Código QR impreso correctamente.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al imprimir el código QR: {ex.Message}");
+        }
+    }
+
+    private void PrintQRCode(PrintPageEventArgs e, string text)
+    {
+        // Carga y dibuja la imagen desde imagePath
+        string imagePath = @"C:\Users\Dagoberto\source\repos\WashBlazor\PrinterPOSClient\wwwroot\assets\images\parkcar.jpg";
+        if (System.IO.File.Exists(imagePath))
+        {
+            using (Image img = Image.FromFile(imagePath))
+            {
+                // Ajusta la posición y el tamaño de la imagen según tus necesidades
+                e.Graphics.DrawImage(img, new RectangleF(0, 0, 100, 100)); // Cambié la posición a (0, 0) para imprimir primero la imagen
+            }
+        }
+        else
+        {
+            Console.WriteLine($"No se encontró la imagen en la ruta: {imagePath}");
+        }
+
+        // Genera el código QR
+        var writer = new BarcodeWriterPixelData
+            {
+                Format = BarcodeFormat.QR_CODE,
+                Options = new EncodingOptions
+                {
+                    Height = 200,
+                    Width = 200
+                }
+            };
+
+        var pixelData = writer.Write(text);
+        using (var bitmap = new Bitmap(pixelData.Width, pixelData.Height, PixelFormat.Format32bppRgb))
+        {
+            var bitmapData = bitmap.LockBits(new Rectangle(0, 0, pixelData.Width, pixelData.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppRgb);
+            try
+            {
+                System.Runtime.InteropServices.Marshal.Copy(pixelData.Pixels, 0, bitmapData.Scan0, pixelData.Pixels.Length);
+            }
+            finally
+            {
+                bitmap.UnlockBits(bitmapData);
+            }
+            e.Graphics.DrawImage(bitmap, new PointF(0, 120)); // Cambié la posición a (0, 120) para que el QR esté debajo de la imagen
+        }
+
+        // Dibuja el texto con ajuste automático para el ancho de la hoja
+        using (Font font = new Font("Trebuchet MS", 12))
+        {
+            if (unidad.Lavado)
+            {
+                Lavado = "Servicio de Lavado";
+            }
+            if (unidad.Parqueadero)
+            {
+                Parqueadero = "Servicio de Parqueadero";
+            }
+            string formattedText = "______________________SMAR WASH CAR *** AUTO PARQUEADERO / LAVADO_________________" + unidad.FechaInicio.ToString() + " **** " + unidad.Nombre + " **** " + unidad.Cedula + " **** " + unidad.Vehiculo + " **** " + unidad.Placa + " **** " + unidad.Descripcion + " **** " + unidad.Recomendacion + " " + Parqueadero + " " + Lavado + " " + "____________________________________________________";
+            Console.WriteLine(formattedText);
+            // Define el área de dibujo para el texto, limitando el ancho a 200 píxeles
+            RectangleF textArea = new RectangleF(0, 330, 200, e.PageBounds.Height - 330);
+
+            // Usa StringFormat para ajustar el texto al ancho del área definida
+            StringFormat stringFormat = new StringFormat
+                {
+                    FormatFlags = StringFormatFlags.LineLimit // Ajusta el texto al área, con saltos de línea automáticos
+                };
+
+            e.Graphics.DrawString(formattedText, font, Brushes.Black, textArea, stringFormat);
+        }
+    }
+    //Timer reloj
+    private DateTime currentTime;
+    private Timer timer;
+    protected override void OnInitialized()
+    {
+        currentTime = DateTime.Now;
+        timer = new System.Threading.Timer(UpdateClock, null, 0, 1000);
+    }
+    private void UpdateClock(object state) { InvokeAsync(() => { currentTime = DateTime.Now; StateHasChanged(); }); }
+    public void Dispose() { timer?.Dispose(); }
+}
+
